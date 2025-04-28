@@ -2,7 +2,7 @@
 FROM openjdk:17-jdk-slim
 
 # The application's jar file
-ARG JAR_FILE=chat/build/libs/webRTC.jar
+ARG JAR_FILE=./build/libs/webRTC.jar
 
 # Add the application's jar to the container
 COPY ${JAR_FILE} app.jar
