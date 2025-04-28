@@ -63,7 +63,7 @@ jobs:
           TAG=$(git rev-parse --short HEAD)
           DOCKER_IMAGE=ghcr.io/${{ secrets.GIT_ID }}/rtc_server:$TAG
           DOCKER_IMAGE_LATEST=ghcr.io/${{ secrets.GIT_ID }}/rtc_server:latest
-          docker build -t rtc_server -f ./docker/default.Dockerfile .
+          docker build -t rtc_server -f ./docker/Dockerfile .
           docker tag rtc_server $DOCKER_IMAGE
           docker tag rtc_server $DOCKER_IMAGE_LATEST
           docker push $DOCKER_IMAGE

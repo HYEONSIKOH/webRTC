@@ -56,7 +56,7 @@ dependencies {
 }
 
 tasks.bootJar {
-	archiveFileName.set("webRTC.jar.jar")
+	archiveFileName.set("webRTC.jar")
 }
 
 // Git 커밋 정보를 git.properties로 생성
