@@ -38,7 +38,7 @@ dependencies {
 	annotationProcessor("org.projectlombok:lombok:1.18.30")
 
 	// Json (Jackson)
-	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+	implementation("com.fasterxml.jackson.core:jackson-databind")
 
 	// validation
 	implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -53,6 +53,9 @@ dependencies {
 	testImplementation("org.junit.jupiter:junit-jupiter-api")
 	testImplementation("org.junit.jupiter:junit-jupiter-engine")
 	testImplementation("org.springframework.security:spring-security-test")
+
+	// WebSocket
+	implementation("org.springframework.boot:spring-boot-starter-websocket")
 }
 
 tasks.bootJar {
