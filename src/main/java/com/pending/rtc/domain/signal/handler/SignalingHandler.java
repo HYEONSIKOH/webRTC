@@ -2,6 +2,7 @@ package com.pending.rtc.domain.signal.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pending.rtc.domain.signal.entity.IceCandidate;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -34,6 +35,19 @@ public class SignalingHandler extends TextWebSocketHandler {
             System.out.println(" - candidate: " + candidate.getCandidate());
             System.out.println(" - sdpMid: " + candidate.getSdpMid());
             System.out.println(" - sdpMLineIndex: " + candidate.getSdpMLineIndex());
+
+            // 가짜 candidate 응답 (서버가 ICE 후보를 보낸다고 가정)
+            ObjectNode response = objectMapper.createObjectNode();
+            response.put("type", "candidate");
+
+            ObjectNode candidateNode = objectMapper.createObjectNode();
+            candidateNode.put("candidate", "candidate:1 1 udp 2130706431 127.0.0.1 9999 typ host");
+            candidateNode.put("sdpMid", candidate.getSdpMid());
+            candidateNode.put("sdpMLineIndex", candidate.getSdpMLineIndex());
+
+            response.set("candidate", candidateNode);
+
+            session.sendMessage(new TextMessage(response.toString()));
         }
     }
 

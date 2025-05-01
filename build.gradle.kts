@@ -46,6 +46,10 @@ dependencies {
 	// Swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
 
+	// WebSocket & Stomp
+	implementation("org.springframework.boot:spring-boot-starter-websocket")
+	implementation("org.webjars:stomp-websocket:2.3.4")
+
 	// Test (Junit5)
 	testImplementation("org.mockito:mockito-core:4.0.0")
 	testImplementation("org.mockito:mockito-junit-jupiter:4.0.0")
@@ -53,9 +57,6 @@ dependencies {
 	testImplementation("org.junit.jupiter:junit-jupiter-api")
 	testImplementation("org.junit.jupiter:junit-jupiter-engine")
 	testImplementation("org.springframework.security:spring-security-test")
-
-	// WebSocket
-	implementation("org.springframework.boot:spring-boot-starter-websocket")
 }
 
 tasks.bootJar {
