@@ -1,59 +1,106 @@
 package com.pending.rtc.domain.signal.handler;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.pending.rtc.domain.signal.entity.IceCandidate;
+import com.pending.rtc.domain.signal.entity.SignalMessage;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-
+@Slf4j
 public class SignalingHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Map<String, WebSocketSession> clients = new ConcurrentHashMap<>();
+    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, String> roomSessions = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String id = session.getId();
-        clients.put(id, session);
+        sessions.put(id, session);
         System.out.println("✅ WebSocket 연결됨: " + id);
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        JsonNode json = objectMapper.readTree(message.getPayload());
-        String type = json.get("type").asText();
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        try {
+            SignalMessage signalMessage = objectMapper.readValue(message.getPayload(), SignalMessage.class);
+            String roomId = signalMessage.getRoomId();
 
-        if ("candidate".equals(type)) {
-            IceCandidate candidate = objectMapper.treeToValue(json.get("candidate"), IceCandidate.class);
+            switch (signalMessage.getType()) {
+                case "join":
+                    handleJoinMessage(session, roomId);
+                    break;
 
-            System.out.println("📡 ICE Candidate 수신 from " + session.getId());
-            System.out.println(" - candidate: " + candidate.getCandidate());
-            System.out.println(" - sdpMid: " + candidate.getSdpMid());
-            System.out.println(" - sdpMLineIndex: " + candidate.getSdpMLineIndex());
+                case "offer":
+                    log.info("Received offer from: {}", session.getId());
+                    broadcastToRoom(session, message, roomId);
+                    break;
 
-            // 가짜 candidate 응답 (서버가 ICE 후보를 보낸다고 가정)
-            ObjectNode response = objectMapper.createObjectNode();
-            response.put("type", "candidate");
+                case "answer":
+                    log.info("Received answer from: {}", session.getId());
+                    broadcastToRoom(session, message, roomId);
+                    break;
 
-            ObjectNode candidateNode = objectMapper.createObjectNode();
-            candidateNode.put("candidate", "candidate:1 1 udp 2130706431 127.0.0.1 9999 typ host");
-            candidateNode.put("sdpMid", candidate.getSdpMid());
-            candidateNode.put("sdpMLineIndex", candidate.getSdpMLineIndex());
+                case "ice-candidate":
+                    log.info("Received ICE candidate from: {}", session.getId());
+                    broadcastToRoom(session, message, roomId);
+                    break;
 
-            response.set("candidate", candidateNode);
-
-            session.sendMessage(new TextMessage(response.toString()));
+                default:
+                    log.warn("Unknown message type: {}", signalMessage.getType());
+            }
+        } catch (Exception e) {
+            log.error("Error handling message: ", e);
         }
+    }
+
+    private void handleJoinMessage(WebSocketSession session, String roomId) {
+        sessions.put(session.getId(), session);
+        roomSessions.put(session.getId(), roomId);
+        log.info("Client {} joined room: {}", session.getId(), roomId);
+
+        // 같은 방의 참가자 수 로깅
+        long roomParticipants = roomSessions.values()
+                .stream()
+                .filter(room -> room.equals(roomId))
+                .count();
+        log.info("Room {} now has {} participants", roomId, roomParticipants);
+    }
+
+    private void broadcastToRoom(WebSocketSession sender, TextMessage message, String roomId) {
+        sessions.forEach((sessionId, webSocketSession) -> {
+            if (!sender.getId().equals(sessionId) &&
+                    roomId.equals(roomSessions.get(sessionId))) {
+                try {
+                    log.info("Broadcasting message to session {} in room {}", sessionId, roomId);
+                    webSocketSession.sendMessage(message);
+                } catch (IOException e) {
+                    log.error("Error sending message to session {}: {}", sessionId, e.getMessage());
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        clients.remove(session.getId());
-        System.out.println("❌ 연결 종료: " + session.getId());
+        String roomId = roomSessions.get(session.getId());
+
+        sessions.remove(session.getId());
+        roomSessions.remove(session.getId());
+        log.info("Client {} disconnected from room {}", session.getId(), roomId);
+
+        // 남은 참가자 수 로깅
+        if (roomId != null) {
+            long remainingParticipants = roomSessions.values()
+                    .stream()
+                    .filter(room -> room.equals(roomId))
+                    .count();
+            log.info("Room {} now has {} participants remaining", roomId, remainingParticipants);
+        }
     }
 }
